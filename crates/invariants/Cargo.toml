@@ -1,0 +1,27 @@
+[package]
+name = "invariants"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+
+# Invariant implementations need capability traits + Crucible types
+fuzz = { path = "../fuzz" }
+crucible-test-context.workspace = true
+
+# Solana types used in invariant detection patterns
+solana-account.workspace = true
+solana-keypair.workspace = true
+solana-pubkey.workspace = true
+solana-instruction.workspace = true
+solana-signer.workspace = true
+solana-transaction-error = "3"
+
+[dev-dependencies]
+solana-system-interface = "2"

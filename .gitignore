@@ -1,0 +1,41 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+keypair.json
+*.toml.local
+
+# Build artifacts (sBPF outputs)
+*.so
+
+# Logs
+*.log
+logs/*
+!logs/.gitkeep
+!logs/README.md
+
+
+# Example demos — build artifacts + fuzz state, NOT source code
+examples/*/target/
+examples/*/fuzz/*/target/
+examples/*/fuzz/*/Cargo.lock
+examples/*/fuzz/*/crashes/
+examples/*/fuzz/*/corpus/
+examples/*/Cargo.lock
+examples/*/programs/*/target/
+examples/*/programs/*/Cargo.lock

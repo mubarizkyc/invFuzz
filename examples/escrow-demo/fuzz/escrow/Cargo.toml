@@ -1,0 +1,36 @@
+[package]
+name = "escrow_fuzz"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+# Crucible — use git deps (match workspace pin) so escrow_fuzz
+# and fuzz both resolve to the same crucible-fuzzer instance.
+crucible-fuzzer = { git = "https://github.com/asymmetric-research/crucible", tag = "v0.1.0" }
+crucible-test-context = { git = "https://github.com/asymmetric-research/crucible", tag = "v0.1.0" }
+
+# path deps — wires this harness into invariants.
+fuzz = { path = "../../../../crates/fuzz" }
+invariants = { path = "../../../../crates/invariants" }
+solana-account = "3"
+solana-keypair = "3"
+solana-pubkey = "3"
+solana-instruction = "3.1"
+solana-signer = "3"
+sha2 = "0.10"
+
+# Existing Crucible / LibAFL deps
+arbitrary = { version = "1", features = ["derive"] }
+ctrlc = "3.4"
+libafl = { version = "0.15.1", features = ["std", "cli", "prelude"] }
+libafl_bolts = { version = "0.15.1", features = ["std"] }
+escrow = { path = "../../programs/escrow", features = ["no-entrypoint"] }
+
+[[bin]]
+name = "invariant_test"
+path = "src/main.rs"
+
+[features]
+invariant_discriminator_skip_only = []
