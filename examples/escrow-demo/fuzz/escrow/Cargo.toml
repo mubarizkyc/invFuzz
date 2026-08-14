@@ -34,3 +34,4 @@ path = "src/main.rs"
 
 [features]
 invariant_discriminator_skip_only = []
+invariant_acceptance = []

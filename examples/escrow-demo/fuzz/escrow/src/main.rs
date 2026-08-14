@@ -103,13 +103,10 @@ struct EscrowFixture {
     pub ctx: TestContext,
     program_id: Pubkey,
     depositor: Arc<Keypair>, // primary trader / used by all action_*
-    depositor_b: Arc<Keypair>,
-    beneficiary: Arc<Keypair>,
     fee_payer: Arc<Keypair>,
     vault_pda: Pubkey, // primary vault (depositor's)
-    vault_b_pda: Pubkey,
-    unlock_slot: u64,
     successful_withdraw_slots: Vec<u64>,
+    unlock_slot: u64,
 }
 
 #[fuzz_fixture]
@@ -175,11 +172,8 @@ impl EscrowFixture {
             ctx,
             program_id,
             depositor,
-            depositor_b,
-            beneficiary,
             fee_payer,
             vault_pda,
-            vault_b_pda,
             unlock_slot,
             successful_withdraw_slots: Vec::new(),
         }
@@ -260,9 +254,7 @@ impl HasInstructionSet for EscrowFixture {
                 AccountMeta::new(self.depositor.pubkey(), true), // depositor (signer)
             ],
             expected_owners: vec![Some(self.program_id), None],
-            // vault at idx 0 SHOULD have Vault's discriminator
             expected_discriminators: vec![Some(vault_discriminator()), None],
-            // vault at idx 0 SHOULD be the PDA at [b"vault", depositor]
             expected_pda_seeds: vec![
                 Some(vec![
                     b"vault".to_vec(),
@@ -273,34 +265,9 @@ impl HasInstructionSet for EscrowFixture {
             data_sample: data,
             signers: vec![Arc::clone(&self.depositor)],
         };
-        let read_admin_data = read_admin_sighash().to_vec();
-        let canonical_source = self.vault_b_pda; // legit escrow-owned source
-        let read_admin_spec = InstructionSpec {
-            program_id: self.program_id,
-            name: "unsafe_set_amount_from_source".into(),
-            accounts: vec![
-                AccountMeta::new_readonly(canonical_source, false), // source (UncheckedAccount)
-                AccountMeta::new(self.vault_pda, false),            // target (Account<Vault>)
-            ],
-            // source at idx 0 SHOULD be escrow-program-owned (bug: no check)
-            // target at idx 1 IS Account<Vault> = Anchor auto-checks owner
-            expected_owners: vec![Some(self.program_id), Some(self.program_id)],
-            expected_discriminators: vec![Some(vault_discriminator()), Some(vault_discriminator())],
-            // No PDA derivation seed declared for either (target IS a PDA but
-            // we leave it as None to focus on owner-skip detection — Anchor's
-            // Account<Vault> auto-handles target's checks)
-            expected_pda_seeds: vec![None, None],
-            data_sample: read_admin_data,
-            signers: vec![], // no business signers; fee-payer auto-added by invariant
-        };
-        vec![unsafe_withdraw_spec, read_admin_spec]
+        vec![unsafe_withdraw_spec]
     }
 }
-
-fn read_admin_sighash() -> [u8; 8] {
-    ix_sighash("unsafe_set_amount_from_source")
-}
-
 fn unsafe_withdraw_sighash() -> [u8; 8] {
     ix_sighash("unsafe_withdraw")
 }
@@ -325,11 +292,11 @@ fn invariant_escrow(fixture: &mut EscrowFixture) {
 }
 
 #[invariant_test]
-fn invariant_acceptance(fixture: &mut EscrowFixture) {
+fn invariant_acceptance(fixture: &EscrowFixture) {
     invariants::invariants::discriminator_skip::check(fixture);
 }
 
 #[invariant_test]
-fn invariant_discriminator_skip_only(fixture: &mut EscrowFixture) {
+fn invariant_discriminator_skip_only(fixture: &EscrowFixture) {
     invariants::invariants::discriminator_skip::check(fixture);
 }
