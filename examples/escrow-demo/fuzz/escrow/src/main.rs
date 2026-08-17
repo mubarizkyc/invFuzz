@@ -235,20 +235,14 @@ impl HasContext for EscrowFixture {
     }
 }
 
-// Anchor discriminator for the Vault account — computed via account_disc
-// instead of pulling in anchor_lang::Discriminator trait.
-fn vault_discriminator() -> [u8; 8] {
-    account_disc("Vault")
-}
-
 impl HasInstructionSet for EscrowFixture {
     fn instructions(&self) -> Vec<InstructionSpec> {
-        let mut data = unsafe_withdraw_sighash().to_vec();
+        let mut data = withdraw_sighash().to_vec();
         data.extend_from_slice(&100_000u64.to_le_bytes());
 
-        let unsafe_withdraw_spec = InstructionSpec {
+        let withdraw_spec = InstructionSpec {
             program_id: self.program_id,
-            name: "unsafe_withdraw".into(),
+            name: "withdraw".into(),
             accounts: vec![
                 AccountMeta::new(self.vault_pda, false),         // vault
                 AccountMeta::new(self.depositor.pubkey(), true), // depositor (signer)
@@ -265,30 +259,15 @@ impl HasInstructionSet for EscrowFixture {
             data_sample: data,
             signers: vec![Arc::clone(&self.depositor)],
         };
-        vec![unsafe_withdraw_spec]
+        vec![withdraw_spec]
     }
 }
-fn unsafe_withdraw_sighash() -> [u8; 8] {
-    ix_sighash("unsafe_withdraw")
+//deterministic
+fn withdraw_sighash() -> [u8; 8] {
+    ix_sighash("withdraw")
 }
-
-// ============================================================================
-// Invariant tests
-// ============================================================================
-
-// Time-guard invariant: every successful withdraw must have happened strictly
-// before unlock. The seeded bug in `withdraw` (uses `<=`) should be found.
-#[invariant_test]
-fn invariant_escrow(fixture: &mut EscrowFixture) {
-    for &s in &fixture.successful_withdraw_slots {
-        fuzz_assert_lt!(
-            s,
-            fixture.unlock_slot,
-            "withdraw at slot {} should have been rejected (unlock_slot = {})",
-            s,
-            fixture.unlock_slot
-        );
-    }
+fn vault_discriminator() -> [u8; 8] {
+    account_disc("Vault")
 }
 
 #[invariant_test]

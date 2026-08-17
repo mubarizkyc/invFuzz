@@ -44,26 +44,12 @@ pub mod escrow_program {
     }
 
     pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
-        let clock = Clock::get()?;
-        let vault = &mut ctx.accounts.vault;
-        // BUG: should be `<` (strictly before unlock). Using `<=` lets the depositor
-        // drain the vault at the exact unlock slot, racing the beneficiary's claim.
-        require!(
-            clock.slot <= vault.unlock_slot,
-            EscrowError::AlreadyUnlocked
-        );
-        require!(
-            amount > 0 && amount <= vault.amount,
-            EscrowError::InvalidAmount
-        );
-
-        **vault.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **ctx
-            .accounts
-            .depositor
-            .to_account_info()
-            .try_borrow_mut_lamports()? += amount;
-        vault.amount -= amount;
+        let vault_lamports = **ctx.accounts.vault.try_borrow_lamports()?;
+        if amount == 0 || amount > vault_lamports {
+            return err!(EscrowError::InvalidAmount);
+        }
+        **ctx.accounts.vault.try_borrow_mut_lamports()? -= amount;
+        **ctx.accounts.depositor.try_borrow_mut_lamports()? += amount;
         Ok(())
     }
 
@@ -81,19 +67,6 @@ pub mod escrow_program {
             .to_account_info()
             .try_borrow_mut_lamports()? += amount;
         vault.amount = 0;
-        Ok(())
-    }
-
-    // `unsafe_withdraw` is a deliberately vulnerable version of `withdraw`
-    // discriminator-skip: vault is UncheckedAccount, no disc check
-    // NOT FOR PRODUCTION.
-    pub fn unsafe_withdraw(ctx: Context<UnsafeWithdraw>, amount: u64) -> Result<()> {
-        let vault_lamports = **ctx.accounts.vault.try_borrow_lamports()?;
-        if amount == 0 || amount > vault_lamports {
-            return err!(EscrowError::InvalidAmount);
-        }
-        **ctx.accounts.vault.try_borrow_mut_lamports()? -= amount;
-        **ctx.accounts.depositor.try_borrow_mut_lamports()? += amount;
         Ok(())
     }
 }
@@ -129,25 +102,10 @@ pub struct Deposit<'info> {
 
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
-    #[account(
-        mut,
-        seeds = [b"vault", depositor.key().as_ref()],
-        bump,
-        has_one = depositor,
-    )]
-    pub vault: Account<'info, Vault>,
-    #[account(mut)]
-    pub depositor: Signer<'info>,
-}
-// PLANTED-BUG context: every Anchor protection deliberately removed.
-#[derive(Accounts)]
-pub struct UnsafeWithdraw<'info> {
-    /// CHECK: BUG — vault should be Account<Vault> with seeds + has_one
     #[account(mut)]
     pub vault: UncheckedAccount<'info>,
-    /// CHECK: BUG — depositor should be Signer
     #[account(mut)]
-    pub depositor: UncheckedAccount<'info>,
+    pub depositor: Signer<'info>,
 }
 
 #[derive(Accounts)]
